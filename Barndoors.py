@@ -3,59 +3,50 @@ import bpy
 #create the barndoors objects
 class AddBarndoors(bpy.types.Operator):
     mesh = bpy.ops.mesh
-    ob = bpy.context.object
+    context = bpy.context
+    ops = bpy.ops
      
     mesh.primitive_plane_add()
-    ob.name = "Right_Panel"
-    ob.parent = bpy.data.objects["Spot"] 
-    bpy.ops.transform.translate(value=(2, 0, 0))
-    bpy.ops.object.transform_apply(location=True)
+    context.object.name = "Right_Panel"
+    context.object.parent = bpy.data.objects["Spot"] 
+    ops.transform.translate(value=(1.5, 0, 0))
+    ops.object.transform_apply(location=True)
 
     mesh.primitive_plane_add()
-    ob.name = "Left_Panel"
-    ob.parent = bpy.data.objects["Spot"] 
-    bpy.ops.transform.translate(value=(-2, 0, 0))
-    bpy.ops.object.transform_apply(location=True)
+    context.object.name = "Left_Panel"
+    context.object.parent = bpy.data.objects["Spot"] 
+    ops.transform.translate(value=(-1, 0, 0))
+    ops.object.transform_apply(location=True)
+    ops.transform.translate(value=(-1, 0, 0))
 
     mesh.primitive_plane_add()
-    ob.name = "Top_Panel"
-    ob.parent = bpy.data.objects["Spot"] 
-    bpy.ops.transform.translate(value=(0, 2, 0))
-    bpy.ops.object.transform_apply(location=True)
+    context.object.name = "Top_Panel"
+    context.object.parent = bpy.data.objects["Spot"] 
+    ops.transform.translate(value=(0, 1.5, 0))
+    ops.object.transform_apply(location=True)
 
     mesh.primitive_plane_add()
-    ob.name = "Bottom_Panel"
-    ob.parent = bpy.data.objects["Spot"] 
-    bpy.ops.transform.translate(value=(0, -2, 0))
-    bpy.ops.object.transform_apply(location=True)
+    context.object.name = "Bottom_Panel"
+    context.object.parent = bpy.data.objects["Spot"] 
+    ops.transform.translate(value=(0, -1.5, 0))
+    ops.object.transform_apply(location=True)
 
     from_pydata([(-1.0, -1.0, 0.0), (1.0, -1.0, 0.0), (-1.0, 1.0, 0.0), (1.0, 1.0, 0.0), (-3.17727, 3.17981, -0.04091), (-4.49474, 0.00163, -0.07223), (-3.17925, -3.1775, -0.06124), (-0.0014, -4.4953, -0.01438), (3.17727, -3.17981, 0.04091), (4.49474, -0.00163, 0.07223), (3.17925, 3.1775, 0.06124), (0.0014, 4.4953, 0.01438), (-1.0, 0.0, 0.0), (0.0, -1.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)],[(12, 0), (13, 1), (14, 3), (15, 2), (5, 4), (6, 5), (7, 6), (8, 7), (9, 8), (10, 9), (11, 10), (4, 11), (12, 2), (13, 0), (14, 1), (15, 3), (2, 4), (11, 15), (3, 10), (14, 9), (5, 12), (0, 6), (7, 13), (1, 8)],[(14, 9, 10, 3), (10, 11, 15, 3), (15, 11, 4, 2), (4, 5, 12, 2), (12, 5, 6, 0), (6, 7, 13, 0), (13, 7, 8, 1), (8, 9, 14, 1)])
+    
+class ObjectsCreationControls(bpy.types.PropertyGroup):
+    
+    from bpy.props import FloatProperty
 
-    
-class AddCookie(bpy.types.Operator):
-    mesh = bpy.ops.mesh
-    ob = bpy.context.object
-    
-    mesh.primitive_plane_add()
-    ob.name = "Cookie"
-    ob.parent = bpy.data.objects["Spot"] 
-    
-class Cookie(bpy.types.Panel):
-    
-    bl_idname = "panel.Cookie"
-    bl_space_type = "PROPERTIES"
-    bl_region_type = "WINDOW"
-    bl_context = "data"
-    bl_label = "Cookie"
-    bl_options = {'DEFAULT_CLOSED'}
-    
-    @classmethod
-    def poll(cls, context):
-        return context.lamp 
-    
-    def draw(self, context):
-        layout = self.layout      
-    
+    UseBarndoors = bpy.props.BoolProperty(
+        description="Enable use of barndoors",
+        default=False)
+        
+    RightPanel = FloatProperty(
+        attr="",
+        name="",
+        description="Angle of the right panel",
+        unit="ROTATION",
+        soft_min=-3.14159265, soft_max=3.14159265, step=10.00, default=0.00)                      
 class BarnDoors(bpy.types.Panel):
     
     bl_idname = "panel.BarnDoors"
@@ -72,7 +63,7 @@ class BarnDoors(bpy.types.Panel):
     
     def draw(self, context):
         layout = self.layout
-        lamp = context.lamp
+        ob = context.object
         col = layout.column()
         split = layout.split()
         
@@ -85,18 +76,18 @@ class BarnDoors(bpy.types.Panel):
         col.label(text="Top Panel:")
         
         col = split.column(align=True) 
-        col.prop(lamp, "spot_size", text="Angle")
-        col.prop(lamp, "spot_size", text="Angle")
-        col.prop(lamp, "spot_size", text="Angle")
-        col.prop(lamp, "spot_size", text="Angle")
+        col.prop(ob, "rotation_euler", text="Angle")
+        col.prop(ob, "rotation_euler", text="Angle")
+        col.prop(ob, "rotation_euler", text="Angle")
+        col.prop(ob, "rotation_euler", text="Angle")
 
 def register():
+    bpy.utils.register_class(ObjectsCreationControls)
     bpy.utils.register_class(BarnDoors)
-    bpy.utils.register_class(Cookie)
 
 def unregister():
+    bpy.utils.unregister_class(ObjectsCreationControls)
     bpy.utils.unregister_class(BarnDoors)
-    bpy.utils.unregister_class(Cookie)
-    
+        
 if __name__ == "__main__":
     register()    
