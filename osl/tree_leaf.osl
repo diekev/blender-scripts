@@ -1,0 +1,84 @@
+#include <stdosl.h>
+
+shader leaf(
+	/* diffuse reflection */
+	float diffSwitch = 1.0,
+	float Kd = 1.0,
+
+	/* diffuse backlighting reflection */
+	float diffBacklightingSwitch = 1.0,
+	float KdBackLight = 0.25,
+
+	/* velvet shading specular model */
+	float specVelvetSwitch = 1.0,
+	float KspecVelvet = 0.1,
+	float velvetRoughness = 0.5,
+	float velvetBackscatter = 0.5,
+	float velvetEdginess = 5,
+
+	color leafColor = color(0.159, 0.318, 0.0),
+
+	/*  */
+	int objectID = 0,
+	float hueShiftByObjectIDSwitch = 0.0,
+	float hueShiftScale = 0.1,
+
+	/* AOV's */
+	output color AOV_baseColor = 0,
+	output color AOV_diff = 0,
+	output color AOV_diffBacklight = 0,
+	output color AOV_spec = 0
+)
+{
+	float objectID_noise = cellnoise(objectID);
+
+	color leafColorNew = leafColor;
+
+	if (hueShiftByObjectIDSwitch > 0.5) {
+		/* We want to switch the hues into the yellows/reds only
+		 * so we remap the noise from [0...1] to [-1...0] */
+		objectID_noise -= 1.0;
+
+		leafColorNew = ctransform("rgb", "hsv", leafColorNew);
+		float hueValue = leafColorNew[0];
+		float newHueValue = hueValue + (objectID_noise * hueShiftScale);
+		newHueValue = clamp(newHueValue, 0.0, 1.0);
+		leafColorNew[0] = newHueValue;
+		leafColorNew = ctransform("hsv", "rgb", leafColorNew);
+	}
+
+	AOV_baseColor = leafColorNew;
+
+	normal Nf = faceforward(normalize(N), I);
+	vector V = -normalize(I);
+
+	/* diffuse reflection */
+	color diff = color(0.0);
+
+	if (diffSwitch > 0.5) {
+		diff = leafColorNew * kd * diffuse(-Nf);
+	}
+
+	AOV_diff = diff;
+
+	/* diffuse backlighting */
+	color diffBacklight = color(0.0);
+
+	if (diffBacklightSwitch > 0.5) {
+		diffBacklight = leafColorNew * kdBackLight * diffuse(-Nf);
+	}
+
+	AOV_diffBacklight = diffBacklight;
+
+	/* specular velvet */
+	color specVelvet = color(0.0);
+
+	if (specVelvetSwitch > 0.5) {
+		specVelvet = KspecVelvet * velvet(Nf, V, velvetRoughness, velvetBackscatter, velvetEdginess);
+	}
+
+	AOV_diff = diff;
+
+	Ci = diff + diffBackLight + specVelvet;
+}
+
