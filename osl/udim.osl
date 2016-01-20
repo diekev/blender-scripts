@@ -1,0 +1,64 @@
+#include <stdosl.h>
+
+/* Adapted from example code by Larry Gritz:
+ * http://permalink.gmane.org/gmane.comp.lib.openimageio.devel/2973
+ */
+
+color udim_texture(string basename,
+                   string extension,
+                   float s,
+                   float t)
+{
+	/* compute all possible filenames from
+	 * xxx1001.xxx to xxx1101.xxx */
+#define NAME(i) format("%s%04d%s", basename, i + 1001, extension)
+
+#define ROWS(j) \
+	NAME(10*j + 0), NAME(10*j + 1), \
+	NAME(10*j + 2), NAME(10*j + 3), \
+	NAME(10*j + 4), NAME(10*j + 5), \
+	NAME(10*j + 6), NAME(10*j + 7), \
+	NAME(10*j + 8), NAME(10*j + 9)
+
+#define COLS \
+	ROWS(0), ROWS(1), ROWS(2), ROWS(3), ROWS(4), \
+	ROWS(5), ROWS(6), ROWS(7), ROWS(8), ROWS(9)
+
+	/* Through macro expansion the entire filenames[] array should become
+	 * constant memory that is initialized just once, and not every time
+	 * the shader executes.
+	 */
+	string filenames[100] = { COLS };
+
+#undef COLS
+#undef ROWS
+#undef NAME
+
+	int umap = int(s);
+	int vmap = int(t);
+	int udim = 10*vmap + umap;
+
+	string filename = filenames[udim];
+
+	return texture(filename, s - umap, 1.0 - (t - vmap));
+}
+
+shader node_udim(string filename = "",
+                 output color Color = 0.0,
+                 output float Alpha = 1.0)
+{
+	point UV = point(0.0, 0.0, 0.0);
+	getattribute("geom:uv", UV);
+	string split_name[2];
+
+	int ret = split(filename, split_name, "1001");
+
+	if(ret != 0) {
+		Color = udim_texture(split_name[0],
+		                     split_name[1],
+		                     UV[0], UV[1]);
+	}
+	else {
+		Color = color(0.5, 0.75, 1.0);
+	}
+}

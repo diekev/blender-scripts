@@ -1,0 +1,94 @@
+#include <stdosl.h>
+// Mie
+// g : (-0.75, -0.999)
+//      3 * (1 - g^2)               1 + c^2
+// F = ----------------- * -------------------------------
+//      2 * (2 + g^2)     (1 + g^2 - 2 * g * c)^(3/2)
+float phase_mie(float g, float c, float cc)
+{
+	float gg = g * g;
+	float a = (1.0 - gg) * (1.0 + cc);
+	float b = 1.0 + gg - 2.0 * g * c;
+
+	b *= sqrt(b);
+	b *= 2.0 + gg;
+
+	return 2.5 * a / b;
+}
+//
+// Reyleigh
+// g : 0
+// F = 3/4 * (1 + c^2)
+float phase_reyleigh(float cc)
+{
+	return 0.75 * (1.0 + cc);
+}
+
+float optic(vector p, vector q)
+{
+	vector step = (q - p) / FNUM_OUT_SCATTER;
+	vector v1 = p + step * 0.5;
+	float sum = 0.0;
+	for (int i = 0; i < NUM_OUT_SCATTER; i++) {
+		sum += density(v1);
+		v1 += step;
+	}
+	sum *= length(step) * SCALE_L;
+	return sum;
+}
+
+shader OCC01(vector Eye = vector(0,0,1),
+		vector Sun = vector(0,0,1),
+		output closure color CL = holdout())
+{
+	// math const
+	float PI = 3.14159265359;
+	float DEG_TO_RAD = PI / 360.0;
+	float MAX = 10000.0;
+	// scatter const
+	float K_R = 0.166;
+	float K_M = 0.0025;
+	float E = 20;       //14.3                         // light intensity
+	vector C_R = vector(0.3, 0.7, 1.0);     // 1 / wavelength ^ 4
+	float G_M = -0.85;    // -0.85                // Mie g
+	float R = 1.0; // 1.0
+	float R_INNER = 0.7;
+	float SCALE_H = 4.0 / (R - R_INNER);
+	float SCALE_L = 1.0 / (R - R_INNER);
+	int NUM_OUT_SCATTER = 10;
+	float FNUM_OUT_SCATTER = 10.0;
+	int NUM_IN_SCATTER = 10;
+	float FNUM_IN_SCATTER = 10.0;
+	/* Begin */
+
+	float density(vector p)
+	{
+		return exp(-(length(p) - R_INNER) * SCALE_H);
+	}
+
+	vector o = normalize(Eye); // eye
+	vector dir = vector(N); // dir
+	vector l = normalize(Sun); // sun light dir
+	vector e = cross(o, dir);
+
+	float len = (e[1] - e[0]) / FNUM_IN_SCATTER;
+	vector step01 = dir * len;
+	vector p = o + dir * e[0];
+	vector v1 = p + dir * (len * 0.5);
+	vector sum = vector(0, 0, 0);
+
+	for (int i = 0; i < NUM_IN_SCATTER; i++) {
+		vector f = cross(I, -dir);
+		vector u1 = v1 + l * f[1];
+		float n = (optic(p, v1) + optic(v1, u1)) * (PI * 4.0);
+		sum += density(v1) * exp(-n * (K_R * C_R + K_M));
+		v1 += step01;
+
+	}
+	sum *= len * SCALE_L;
+	float c  = dot(dir, -l);
+	float cc = c * c;
+	vector Fact = sum * K_R * C_R * phase_reyleigh(cc) + K_M * phase_mie(G_M, c, cc) * E;
+	CL =  emission() * 1.5 * color(Fact);
+	return;
+}
